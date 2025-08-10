@@ -1,6 +1,6 @@
-NAME	:= ex10
+NAME	:= ex11
 
-SRCS	:=	map.cpp
+SRCS	:=	reverse_map.cpp
 
 DIR		:=	./
 
