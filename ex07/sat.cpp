@@ -25,7 +25,7 @@ struct Expr {
     static bool And(char x, char y) { return x & y; }
     static bool Or(char x, char y) { return x | y; }
     static bool Xor(char x, char y) { return y ^ x; }
-    static bool Imp(char x, char y) { return !y || x; }
+    static bool Imp(char x, char y) { return (!y) | x; }
     static bool Iff(char x, char y) { return x == y; }
 };
 
@@ -212,16 +212,12 @@ std::string conjunctive_normal_form(std::string &str) {
     for (int i = (int)str.size() - 1; i >= 0; i--)
         stack.push(str[i]);
 
-    try {
-        std::shared_ptr<Expr> expr = solveRPNExpr(stack);
-        expr = eliminateComplexOps(expr);
-        expr = toNNF(expr);
-        expr = distributeOrOverAnd(expr);
-        std::string res = displayRPN(expr, "");
-        return res;
-    }
-    catch(std::exception &e) { std::cout << e.what() << std::endl; return "" ; }
-    return "";   
+    std::shared_ptr<Expr> expr = solveRPNExpr(stack);
+    expr = eliminateComplexOps(expr);
+    expr = toNNF(expr);
+    expr = distributeOrOverAnd(expr);
+    std::string res = displayRPN(expr, "");
+    return res;   
 }
 
 bool eval_formula(std::string str) {
@@ -230,8 +226,7 @@ bool eval_formula(std::string str) {
     for (int i = (int)str.size() - 1; i >= 0; i--)
         stack.push(str[i]);
 
-    try { return solveRPNChar(stack); }
-    catch(std::exception &e) { std::cout << e.what() << std::endl; return false; }
+    return solveRPNChar(stack);
 }
 
 int getTruthTable(std::string &str) {
@@ -266,6 +261,7 @@ int getTruthTable(std::string &str) {
 }
 
 bool sat(std::string &str) {
+
     std::string Cnf = conjunctive_normal_form(str);
     bool res = getTruthTable(Cnf);
     return res;
@@ -277,8 +273,11 @@ int main(int ac, char **av) {
 
     std::string str = av[1];
 
-    if (sat(str))   std::cout << "true" << std::endl;
-    else            std::cout << "false" << std::endl;
+    try {
+        if (sat(str))   std::cout << "true" << std::endl;
+        else            std::cout << "false" << std::endl;
+    }
+    catch(std::exception &e) { std::cout << e.what() << std::endl; return 0; }
 
     return 0;
 }
