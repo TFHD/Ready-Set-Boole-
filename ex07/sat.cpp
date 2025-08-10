@@ -151,13 +151,12 @@ T chooseFormula(T x, T y, char op) {
     return 0;
 }
 
-template <typename T>
-static T solveRPN(std::stack<char> &stack) {
-    std::stack<T> rpn;
-
-    for (int i = 0; stack.size() != 0; i++) {
+std::shared_ptr<Expr> solveRPNExpr(std::stack<char> &stack) {
+    std::stack<std::shared_ptr<Expr>> rpn;
+    while (!stack.empty()) {
         if (isOperator<char>(stack.top())) {
-            if ((rpn.size() <= 1 && stack.top() != '!') || (rpn.size() < 1 && stack.top() == '!')) throw std::runtime_error("Invalid formula");
+            if ((rpn.size() <= 1 && stack.top() != '!') || (rpn.size() < 1 && stack.top() == '!'))
+                throw std::runtime_error("Invalid formula");
             if (stack.top() == '!') {
                 auto x = rpn.top(); rpn.pop();
                 rpn.push(chooseFormula(x, x, stack.top()));
@@ -167,20 +166,39 @@ static T solveRPN(std::stack<char> &stack) {
                 rpn.push(chooseFormula(x, y, stack.top()));
             }
         } else {
-            if constexpr (std::is_same<T, std::shared_ptr<Expr>>::value) {
-                if (stack.top() < 'A' || stack.top() > 'Z') throw std::runtime_error("Unknow parameter");
-                std::string str(1, stack.top());
-                rpn.push(Expr::Var(str));
-            } else {
-                if (stack.top() != '0' && stack.top() != '1') throw std::runtime_error("Unknow parameter");
-                rpn.push(stack.top() - '0');
-            }
+            if (stack.top() < 'A' || stack.top() > 'Z') throw std::runtime_error("Unknow parameter");
+            std::string str(1, stack.top());
+            rpn.push(Expr::Var(str));
         }
         stack.pop();
     }
     if (rpn.size() != 1) throw std::runtime_error("Invalid formula");
-        return rpn.top();
+    return rpn.top();
+}
+
+char solveRPNChar(std::stack<char> &stack) {
+    std::stack<char> rpn;
+    while (!stack.empty()) {
+        if (isOperator<char>(stack.top())) {
+            if ((rpn.size() <= 1 && stack.top() != '!') || (rpn.size() < 1 && stack.top() == '!'))
+                throw std::runtime_error("Invalid formula");
+            if (stack.top() == '!') {
+                char x = rpn.top(); rpn.pop();
+                rpn.push(chooseFormula(x, x, stack.top()));
+            } else {
+                char x = rpn.top(); rpn.pop();
+                char y = rpn.top(); rpn.pop();
+                rpn.push(chooseFormula(x, y, stack.top()));
+            }
+        } else {
+            if (stack.top() != '0' && stack.top() != '1') throw std::runtime_error("Unknow parameter");
+            rpn.push(stack.top() - '0');
+        }
+        stack.pop();
     }
+    if (rpn.size() != 1) throw std::runtime_error("Invalid formula");
+    return rpn.top();
+}
 
 std::string replaceAll(std::string str, char oldChar, char newChar) {
     for (char& c : str)
@@ -195,7 +213,7 @@ std::string conjunctive_normal_form(std::string &str) {
         stack.push(str[i]);
 
     try {
-        std::shared_ptr<Expr> expr = solveRPN<std::shared_ptr<Expr>>(stack);
+        std::shared_ptr<Expr> expr = solveRPNExpr(stack);
         expr = eliminateComplexOps(expr);
         expr = toNNF(expr);
         expr = distributeOrOverAnd(expr);
@@ -212,7 +230,7 @@ bool eval_formula(std::string str) {
     for (int i = (int)str.size() - 1; i >= 0; i--)
         stack.push(str[i]);
 
-    try { return solveRPN<char>(stack); }
+    try { return solveRPNChar(stack); }
     catch(std::exception &e) { std::cout << e.what() << std::endl; return false; }
 }
 
