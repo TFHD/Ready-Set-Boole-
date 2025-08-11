@@ -8,7 +8,7 @@ OBJS	:=	$(patsubst %.cpp, $(DIR)%.o, $(SRCS))
 
 CC		:= c++
 
-FLAGS 	:= -Wall -Werror -Wextra
+FLAGS 	:= -Wall -Werror -Wextra -std=c++17
 
 TPUT 					= tput -T xterm-256color
 _RESET 					:= $(shell $(TPUT) sgr0)

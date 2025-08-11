@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cstdlib>
 
-int mutiplier(int a, int b) {
+int mutiplier(unsigned int a, unsigned int b) {
     int res = 0;
     while (b > 0) {
       if (1 & b) res += a;
@@ -13,7 +13,7 @@ int mutiplier(int a, int b) {
 
 int main(int ac, char **av) {
     if (ac != 3) {
-        std::cout << "need 3 parameters" << std::endl;
+        std::cout << "need 2 parameters" << std::endl;
         return 1;
     }
     else

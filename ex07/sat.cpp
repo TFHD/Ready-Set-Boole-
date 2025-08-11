@@ -4,6 +4,8 @@
 #include <vector>
 #include <memory>
 #include <typeinfo>
+#include <thread>
+#include <atomic>
 
 
 enum class NodeType { VAR, NOT, AND, OR, IMP, IFF, XOR };
@@ -25,7 +27,7 @@ struct Expr {
     static bool And(char x, char y) { return x & y; }
     static bool Or(char x, char y) { return x | y; }
     static bool Xor(char x, char y) { return y ^ x; }
-    static bool Imp(char x, char y) { return (!y) | x; }
+    static bool Imp(char x, char y) { return !y || x; }
     static bool Iff(char x, char y) { return x == y; }
 };
 
@@ -150,13 +152,13 @@ T chooseFormula(T x, T y, char op) {
         return (Expr::Iff(y, x));
     return 0;
 }
+template <typename T>
+static T solveRPN(std::stack<char> &stack) {
+    std::stack<T> rpn;
 
-std::shared_ptr<Expr> solveRPNExpr(std::stack<char> &stack) {
-    std::stack<std::shared_ptr<Expr>> rpn;
-    while (!stack.empty()) {
+    for (int i = 0; stack.size() != 0; i++) {
         if (isOperator<char>(stack.top())) {
-            if ((rpn.size() <= 1 && stack.top() != '!') || (rpn.size() < 1 && stack.top() == '!'))
-                throw std::runtime_error("Invalid formula");
+            if ((rpn.size() <= 1 && stack.top() != '!') || (rpn.size() < 1 && stack.top() == '!')) throw std::runtime_error("Invalid formula");
             if (stack.top() == '!') {
                 auto x = rpn.top(); rpn.pop();
                 rpn.push(chooseFormula(x, x, stack.top()));
@@ -166,38 +168,19 @@ std::shared_ptr<Expr> solveRPNExpr(std::stack<char> &stack) {
                 rpn.push(chooseFormula(x, y, stack.top()));
             }
         } else {
-            if (stack.top() < 'A' || stack.top() > 'Z') throw std::runtime_error("Unknow parameter");
-            std::string str(1, stack.top());
-            rpn.push(Expr::Var(str));
-        }
-        stack.pop();
-    }
-    if (rpn.size() != 1) throw std::runtime_error("Invalid formula");
-    return rpn.top();
-}
-
-char solveRPNChar(std::stack<char> &stack) {
-    std::stack<char> rpn;
-    while (!stack.empty()) {
-        if (isOperator<char>(stack.top())) {
-            if ((rpn.size() <= 1 && stack.top() != '!') || (rpn.size() < 1 && stack.top() == '!'))
-                throw std::runtime_error("Invalid formula");
-            if (stack.top() == '!') {
-                char x = rpn.top(); rpn.pop();
-                rpn.push(chooseFormula(x, x, stack.top()));
+            if constexpr (std::is_same<T, std::shared_ptr<Expr>>::value) {
+                if (stack.top() < 'A' || stack.top() > 'Z') throw std::runtime_error("Unknow parameter");
+                std::string str(1, stack.top());
+                rpn.push(Expr::Var(str));
             } else {
-                char x = rpn.top(); rpn.pop();
-                char y = rpn.top(); rpn.pop();
-                rpn.push(chooseFormula(x, y, stack.top()));
+                if (stack.top() != '0' && stack.top() != '1') throw std::runtime_error("Unknow parameter");
+                rpn.push(stack.top() - '0');
             }
-        } else {
-            if (stack.top() != '0' && stack.top() != '1') throw std::runtime_error("Unknow parameter");
-            rpn.push(stack.top() - '0');
         }
         stack.pop();
     }
     if (rpn.size() != 1) throw std::runtime_error("Invalid formula");
-    return rpn.top();
+        return rpn.top();
 }
 
 std::string replaceAll(std::string str, char oldChar, char newChar) {
@@ -212,12 +195,16 @@ std::string conjunctive_normal_form(std::string &str) {
     for (int i = (int)str.size() - 1; i >= 0; i--)
         stack.push(str[i]);
 
-    std::shared_ptr<Expr> expr = solveRPNExpr(stack);
-    expr = eliminateComplexOps(expr);
-    expr = toNNF(expr);
-    expr = distributeOrOverAnd(expr);
-    std::string res = displayRPN(expr, "");
-    return res;   
+    try {
+        std::shared_ptr<Expr> expr = solveRPN<std::shared_ptr<Expr>>(stack);
+        expr = eliminateComplexOps(expr);
+        expr = toNNF(expr);
+        expr = distributeOrOverAnd(expr);
+        std::string res = displayRPN(expr, "");
+        return res;
+    }
+    catch(std::exception &e) { std::cout << e.what() << std::endl; return "" ; }
+    return "";   
 }
 
 bool eval_formula(std::string str) {
@@ -226,14 +213,14 @@ bool eval_formula(std::string str) {
     for (int i = (int)str.size() - 1; i >= 0; i--)
         stack.push(str[i]);
 
-    return solveRPNChar(stack);
+    try { return solveRPN<char>(stack); }
+    catch(std::exception &e) { std::cout << e.what() << std::endl; return false; }
 }
 
 int getTruthTable(std::string &str) {
 
     int nb_possibility = 0;
     int nb_letter = 0;
-    int efficiant = 0;
     std::map<char, int> mapLetter;
     std::vector<char> letters;
     for (int i = 0; i < (int)str.length(); i++) {
@@ -244,25 +231,49 @@ int getTruthTable(std::string &str) {
         }
     }
     nb_possibility = 1 << nb_letter;
+    int nthreads = std::thread::hardware_concurrency();
+    if (nthreads == 0) nthreads = 4;
 
-    for (int i = 0; i < nb_possibility; i++) {
-        for (int j = 0; j < nb_letter; j++) {
-            char c = letters[j];
-            mapLetter[c] = (i >> (nb_letter - j - 1)) & 1;
+    std::atomic<bool> found(false);
+
+    auto worker = [&](int start, int end) {
+        std::map<char, int> localMap;
+        for (int i = start; i < end && !found.load(); i++) {
+            std::vector<char> localLetters = letters;
+            localMap = mapLetter;
+            for (int j = 0; j < nb_letter; j++) {
+                char c = localLetters[j];
+                localMap[c] = (i >> (nb_letter - j - 1)) & 1;
+            }
+            std::string str1(str);
+            for (auto it = localMap.begin(); it != localMap.end(); it++) {
+                str1 = replaceAll(str1, it->first, it->second + 48);
+            }
+            if (eval_formula(str1)) {
+                found.store(true);
+                return;
+            }
         }
-        std::string str1 = str;
-        for (auto it = mapLetter.begin(); it != mapLetter.end(); it++) {
-            str1 = replaceAll(str1, it->first, it->second + 48);
-        }
-        if (eval_formula(str1))
-            efficiant = 1;
+    };
+
+    std::vector<std::thread> threads;
+    int chunk = nb_possibility / nthreads;
+    int rem = nb_possibility % nthreads;
+    int curr = 0;
+    for (int t = 0; t < nthreads; ++t) {
+        int start = curr;
+        int end = curr + chunk + (t < rem ? 1 : 0);
+        threads.emplace_back(worker, start, end);
+        curr = end;
     }
-    return efficiant;
+    for (auto& th : threads) th.join();
+    return found ? 1 : 0;
 }
 
 bool sat(std::string &str) {
-
     std::string Cnf = conjunctive_normal_form(str);
+    if (Cnf == "")
+        return 0;
     bool res = getTruthTable(Cnf);
     return res;
 }
@@ -271,13 +282,10 @@ int main(int ac, char **av) {
 
     if (ac != 2) { std::cout << "need 1 parameter" << std::endl; return 1; }
 
-    std::string str = av[1];
+    std::string str(av[1]);
 
-    try {
-        if (sat(str))   std::cout << "true" << std::endl;
-        else            std::cout << "false" << std::endl;
-    }
-    catch(std::exception &e) { std::cout << e.what() << std::endl; return 0; }
+    if (sat(str))   std::cout << "true" << std::endl;
+    else            std::cout << "false" << std::endl;
 
     return 0;
 }

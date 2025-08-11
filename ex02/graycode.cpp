@@ -1,13 +1,13 @@
 #include <iostream>
 #include <cstdlib>
 
-int gray_code(int n) {
+int gray_code(unsigned int n) {
     return n ^ (n >> 1);
 }
 
 int main(int ac, char **av) {
     if (ac != 2) {
-        std::cout << "need 1 parameters" << std::endl;
+        std::cout << "need 1 parameter" << std::endl;
         return 1;
     }
     else

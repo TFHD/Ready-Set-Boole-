@@ -196,8 +196,8 @@ std::string conjunctive_normal_form(std::string &str) {
         expr = eliminateComplexOps(expr);
         expr = toNNF(expr);
         expr = distributeOrOverAnd(expr);
-        std::string a = displayRPN(expr, "");
-        std::cout << a << std::endl;
+        std::string strRes = displayRPN(expr, "");
+        return strRes;
     }
     catch(std::exception &e) { std::cout << e.what() << std::endl; return "" ; }
     return "";    
@@ -206,8 +206,10 @@ std::string conjunctive_normal_form(std::string &str) {
 int main(int ac, char **av) {
 
     if (ac != 2) { std::cout << "need 1 parameter" << std::endl; return 1; }
-
-    std::string str = av[1];
-    conjunctive_normal_form(str);
+    
+    std::string str(av[1]);
+    std::string cnf = conjunctive_normal_form(str);
+ 
+    std::cout << cnf << std::endl;
     return 0;
 }

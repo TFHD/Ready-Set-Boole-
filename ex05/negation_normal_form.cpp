@@ -4,7 +4,6 @@
 #include <vector>
 #include <memory>
 
-
 enum class NodeType { VAR, NOT, AND, OR, IMP, IFF, XOR };
 
 struct Expr {
@@ -165,8 +164,8 @@ std::string negation_normal_form(std::string &str) {
         std::shared_ptr<Expr> expr = solveRPN(stack);
         expr = eliminateComplexOps(expr);
         expr = toNNF(expr);
-        std::string a = displayRPN(expr, "");
-        std::cout << a << std::endl;
+        std::string strRes = displayRPN(expr, "");
+        return strRes;
     }
     catch(std::exception &e) { std::cout << e.what() << std::endl; return ""; }  
     return "";  
@@ -176,7 +175,9 @@ int main(int ac, char **av) {
 
     if (ac != 2) { std::cout << "need 1 parameter" << std::endl; return 1; }
 
-    std::string str = av[1];
-    negation_normal_form(str);
+    std::string str(av[1]);
+    std::string nnf = negation_normal_form(str);
+
+    std::cout << nnf << std::endl;
     return 0;
 }

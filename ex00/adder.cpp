@@ -1,7 +1,7 @@
 #include <iostream>
 #include <cstdlib>
 
-int adder(int a, int b) {
+int adder(unsigned int a, unsigned int b) {
     while (b != 0) {
         int sum = a ^ b;
         int ret = (a & b) << 1;
@@ -13,7 +13,7 @@ int adder(int a, int b) {
 
 int main(int ac, char **av) {
     if (ac != 3) {
-        std::cout << "need 3 parameters" << std::endl;
+        std::cout << "need 2 parameters" << std::endl;
         return 1;
     }
     else
