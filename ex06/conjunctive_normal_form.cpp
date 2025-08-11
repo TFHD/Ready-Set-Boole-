@@ -211,6 +211,6 @@ int main(int ac, char **av) {
     std::string cnf = conjunctive_normal_form(str);
 
     if (cnf != "")
-    std::cout << cnf << std::endl;
+        std::cout << cnf << std::endl;
     return 0;
 }
