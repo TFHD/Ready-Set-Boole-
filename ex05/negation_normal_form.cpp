@@ -177,7 +177,7 @@ int main(int ac, char **av) {
 
     std::string str(av[1]);
     std::string nnf = negation_normal_form(str);
-
-    std::cout << nnf << std::endl;
+    if (nnf != "")
+        std::cout << nnf << std::endl;
     return 0;
 }

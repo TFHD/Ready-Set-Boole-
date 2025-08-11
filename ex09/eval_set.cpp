@@ -138,7 +138,7 @@ tab eval_set(std::string &str, d_tab *vec) {
         for (int i = 0; i < (int)str.size(); i++) {
             if (str[i] >= 'A' && str[i] <= 'Z' && mapLetter.find(str[i]) == mapLetter.end()) {
                 if (nbLetter + 1 > (int)vec->size())
-                    throw std::runtime_error("Missings sets");
+                    throw std::runtime_error("To many sets");
                 mapLetter.insert({str[i], ( *vec)[nbLetter++]});
             }
         }

@@ -48,8 +48,10 @@ int main(int ac, char **av) {
     tab vec;
     for (int i = 1; i < ac; i++) {
         std::string str(av[i]);
-        if (!isStringIsDigit(str))
+        if (!isStringIsDigit(str)) {
+            std::cout << "The string isn't an int" << std::endl;
             return 1;
+        }
         vec.push_back(std::atoi(av[i]));
     }
 
